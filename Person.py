@@ -14,7 +14,6 @@ class Person:
   ) -> None:
     self.ID = ID
     self.schedule = schedule
-    self.cur_location : Location | None = None
     self.infection = False
     self.vaccine = False
     self.isolated = False
