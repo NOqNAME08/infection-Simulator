@@ -14,12 +14,11 @@ class Person:
   ) -> None:
     self.ID = ID
     self.schedule = schedule
-    self.infection = False
     self.vaccine = False
     self.isolated = False
     self.cur_location: Location | None= None
     self.infected_at: int | None = None
-    self.recovered = False
+    self.state = "S"
 
   def move(self, time) -> str:
     #격리
