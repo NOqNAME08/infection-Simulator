@@ -49,7 +49,7 @@ def main():
 
     for hour in range(24) :
         infected_count = sum(
-            person.infection
+            person.state == "I"
             for person in simulation.people.values()
         )
 
@@ -71,14 +71,14 @@ def main():
     print("평균 접촉자 수:", round(average_contacts, 2))
     print("최대 접촉자 수:", max(edge_counts, default = 0))
     print("전체 감염자 수:", sum(
-        person.infection
+        person.state == "I"
         for person in simulation.people.values()
     ))
 
     print("종료:", simulation.day, simulation.hour)
 
     infected = sum(
-        person.infection
+        person.state == 'I'
         for person in simulation.people.values()
     )
 
