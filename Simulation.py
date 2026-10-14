@@ -9,7 +9,7 @@ class Simulation:
   def __init__(self):
 
     self.people : dict[int, Person.Person] = {}    # 0 : person(...), 1 : person(...)
-    self.graph : dict[int, list[list[int]]] = {}
+    self.graph : dict[int, list[int]] = {}
 
     self.locations : dict[str, Location.Location] = {
       'cafe' : Location.Location('cafe'),
@@ -21,7 +21,11 @@ class Simulation:
 
     self.day : int = 0
     self.hour : int = 0
+    self.total_hours : int = 0 #누적 값.
     self.is_distancing_active: bool = False
+    self.occupations: dict[int, str] = {}
+    self.infection_probability: float = 0.15 #감염율
+    self.vaccine_effectiveness: float = 0.70 #백신 효과 (100퍼가 아님)
 
 
   def create_schedule(self, occupation: str) -> dict[int, Location.Location]:
@@ -63,6 +67,7 @@ class Simulation:
     #재시작 시 초기화
     self.people.clear()
     self.graph.clear()
+    self.occupations.clear()
 
     for location in self.locations.values():
       location.people.clear()
@@ -73,6 +78,7 @@ class Simulation:
     #직업 선택과 스케쥴 제작
     for person_id in range(size):
       occupation = random.choice(["school", "company"])
+      self.occupations[person_id] = occupation
 
       schedule = self.create_schedule(occupation)
 
@@ -98,62 +104,97 @@ class Simulation:
 
 
   def contact_check(self) -> None:
+    # 초기 셋업.
+    self.graph = {
+        person_id : []
+        for person_id in self.people
+    }
 
-    for person_id in range(len(self.people)):
-      if self.graph[person_id] is None:
-        self.graph[person_id] = []
+    for location in self.locations.values() :
+      people_here = location.people
 
-      temp:list[int]  = []
-      for id in self.people[person_id].cur_location.people:
-        temp.append(id)
-      self.graph[person_id].append(temp)
+      for i in range(len(people_here)) :
+        person_a = people_here[i]
+
+        for j in range(i + 1, len(people_here)) :
+          person_b = people_here[j]
+
+          # 두 사람이 직접 접촉할 확률 (일시적 값)
+          if random.random() < 0.1 :
+            self.graph[person_a].append(person_b)
+            self.graph[person_b].append(person_a)
 
 
   def infection_phase(self) -> bool:
-    #TODO
+    newly_infected: set[int] = set()
 
+    for person_id, neighbors in self.graph.items():
+        person = self.people[person_id]
 
-    #감염 정도를 확인하고 감염자가 특정 값 이상으로 많을 시 거리두기 조치
-    count: int = 0
-    for person in self.people.values():
-      if person.infection:
-        count += 1
+        if not person.infection:
+            continue
 
-    if count >= len(self.people)*0.5:
-      self.is_distancing_active = True
+        for neighbor_id in neighbors:
+            neighbor = self.people[neighbor_id]
+
+            if neighbor.infection:
+                continue
+
+            probability = self.infection_probability
+
+            # 백신 접종자는 감염 확률 감소
+            if neighbor.vaccine:
+                probability *= (1 - self.vaccine_effectiveness)
+
+            if random.random() < probability:
+                newly_infected.add(neighbor_id)
+
+    # 모든 감염 판정이 끝난 뒤 상태 변경
+    for person_id in newly_infected:
+        self.people[person_id].infection = True
+
+    # 감염자 비율이 50% 이상이면 거리두기 발령
+    infected_count = sum(
+        person.infection
+        for person in self.people.values()
+    )
+
+    if infected_count >= len(self.people) * 0.5:
+        self.is_distancing_active = True
 
     return True
 
+  def simulate_hour(self) -> bool :
+    for person in self.people.values() :
+      person.move(self.hour)
 
-  def simulate_hour(self) -> bool:
+    self.contact_check()
+    self.infection_phase()
+    self.hour += 1
 
-    while self.hour < 24:
-      for person in self.people.values():
-        person.move(self.hour)
-
-      self.contact_check()
-
-      self.hour += 1
-
-    self.hour = 0
+    if self.hour >= 24 :
+      self.hour = 0
 
     return True
 
+  def simulate_day(self) -> bool :
+    for _ in range(24) :
+      self.simulate_hour()
 
-  def simulate_day(self) -> bool:
-    #TODO
-    for person in self.people.values():
+    self.day += 1
 
-      occupation = random.choice(["school", "company"])
+    # 다음 날 스케줄 생성
+    for person_id, person in self.people.items() :
+      occupation = self.occupations[person_id]
       person.schedule = self.create_schedule(occupation)
 
-    self.infection_phase()
     return True
 
+  def run(self, days: int) -> bool :
+    if days < 0 :
+      raise ValueError("days must be non-negative")
 
-  def run(self, days) -> bool:
-    #TODO
-    for i in range(days):
+    for _ in range(days) :
       self.simulate_day()
 
     return True

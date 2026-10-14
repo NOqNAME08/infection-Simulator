@@ -40,26 +40,55 @@
 #수요일 5시 과외로 변경.
 from Simulation import Simulation
 
+
 def main():
     simulation = Simulation()
+    simulation.setup(100)
 
-    simulation.setup()
-    # simulation.run(30)
-    print("전체 인원:", len(simulation.people))
-    print("초기 감염자:", [
-        person.ID
+    print("시간별 감염자 수")
+
+    for hour in range(24) :
+        infected_count = sum(
+            person.infection
+            for person in simulation.people.values()
+        )
+
+        print(f"{hour:02d}시: {infected_count}명")
+
+        simulation.simulate_hour()
+
+    edge_counts = [
+        len(neighbors)
+        for neighbors in simulation.graph.values()
+    ]
+
+    average_contacts = (
+        sum(edge_counts) / len(edge_counts)
+        if edge_counts
+        else 0
+    )
+
+    print("평균 접촉자 수:", round(average_contacts, 2))
+    print("최대 접촉자 수:", max(edge_counts, default = 0))
+    print("전체 감염자 수:", sum(
+        person.infection
         for person in simulation.people.values()
-        if person.infection
-    ])
+    ))
 
-    print("\n장소별 인원")
-    for name, location in simulation.locations.items():
-        print(name, len(location.people))
+    print("종료:", simulation.day, simulation.hour)
 
-    person = simulation.people[0]
-    print("\nPerson 0의 일정")
-    for hour in range(24):
-        print(hour, person.schedule[hour].name)
+    infected = sum(
+        person.infection
+        for person in simulation.people.values()
+    )
+
+    print("감염자 수:", infected)
+
+    print(
+        "접촉 그래프의 노드 수:",
+        len(simulation.graph)
+    )
+
 
 if __name__ == "__main__":
     main()
