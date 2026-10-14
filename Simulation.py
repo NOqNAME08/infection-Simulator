@@ -74,6 +74,8 @@ class Simulation:
 
     self.day = 0
     self.hour = 0
+    self.total_hours = 0
+    self.is_distancing_active = False
 
     #직업 선택과 스케쥴 제작
     for person_id in range(size):
@@ -171,6 +173,7 @@ class Simulation:
     self.contact_check()
     self.infection_phase()
     self.hour += 1
+    self.total_hours += 1
 
     if self.hour >= 24 :
       self.hour = 0
