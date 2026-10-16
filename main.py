@@ -37,7 +37,7 @@
 # 실험 2: 사회적 거리두기(간선 축소)
 #
 # 분석: 노드 사이의 간선 수를 30% 줄였을 때, 바이러스가 전체 노드로 확산되는 데 걸리는 일수(Day)가 증가하여 확산 곡선이 평탄화됨(Flattening the curve).
-#수요일 5시 과외로 변경.
+#금요일 5시 과외로 변경.
 from Simulation import Simulation
 
 
@@ -75,7 +75,7 @@ def main():
         for person in simulation.people.values()
     ))
 
-    print("종료:", simulation.day, simulation.hour)
+    print("종료:", simulation.day, simulation.total_hours)
 
     infected = sum(
         person.infection
