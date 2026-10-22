@@ -1,4 +1,5 @@
 import random
+import pandas as pd
 
 import Location
 import Person
@@ -8,8 +9,10 @@ class Simulation:
 
   def __init__(self):
 
+    self.result : pd.DataFrame = pd.DataFrame(columns=["day", "infected"])
+
     self.people : dict[int, Person.Person] = {}    # 0 : person(...), 1 : person(...)
-    self.graph : dict[int, list[int]] = {}
+    self.graph : dict[int, list[int]] = {}         # 하루 하루 초기화 중.
 
     self.locations : dict[str, Location.Location] = {
       'cafe' : Location.Location('cafe'),
@@ -24,9 +27,16 @@ class Simulation:
     self.total_hours : int = 0 #누적 값.
     self.is_distancing_active: bool = False
     self.occupations: dict[int, str] = {}
-    self.infection_probability: float = 0.15 #감염율
-    self.vaccine_effectiveness: float = 0.70 #백신 효과 (100퍼가 아님)
+    self.infection_probability : float = 0.15 #감염율
+    self.vaccine_effectiveness : float = 0.70 #백신 효과 (100퍼가 아님)
+    self.recovered_probability : float = 0.85
 
+  def infected_count(self):
+    infected_count = sum(
+        person.state == "Infected"
+        for person in self.people.values()
+    )
+    return infected_count
 
   def create_schedule(self, occupation: str) -> dict[int, Location.Location]:
 
@@ -95,14 +105,32 @@ class Simulation:
 
       self.people[person_id] = person
 
+      #초기 백신 접종자
+      if random.random() < 0.4:
+        self.people[person_id].vaccine = True
+
       # 초기에는 접촉 관계가 없는 빈 그래프
       self.graph[person_id] = []
 
+
     # 초기 감염자 한 명 지정
     initial_infected = random.choice(list(self.people.values()))
-    initial_infected.infection = True
+    initial_infected.state = "Infected"
 
     return True
+
+
+  # 모든 사람들을 검사.
+  def recovered_check(self):
+    people = self.people.values()
+    for person in people :
+      #date가 None인 경우 에러 발생. 미리 처리.
+      if person.infected_date is None:
+        continue
+      if int(self.total_hours/24) - person.infected_date >= 7 :
+        person.infected_date = None
+        person.state = "Recovered"
+        person.infected_at = None
 
 
   def contact_check(self) -> None:
@@ -111,10 +139,12 @@ class Simulation:
         person_id : []
         for person_id in self.people
     }
-
+    # 모든 위치에 대하여 사람들의 접촉 여부를 판별
     for location in self.locations.values() :
+      if location.name == "home" :
+        continue
       people_here = location.people
-
+      # 사람 둘을 뽑아 둘의 접촉율을 테스트 및 그래프에 반영
       for i in range(len(people_here)) :
         person_a = people_here[i]
 
@@ -122,42 +152,47 @@ class Simulation:
           person_b = people_here[j]
 
           # 두 사람이 직접 접촉할 확률 (일시적 값)
-          if random.random() < 0.1 :
+          if random.random() < 0.015 :
             self.graph[person_a].append(person_b)
             self.graph[person_b].append(person_a)
 
 
   def infection_phase(self) -> bool:
     newly_infected: set[int] = set()
-
+    # 접촉한 사람들을 대상으로 감염 여부를 제공
     for person_id, neighbors in self.graph.items():
         person = self.people[person_id]
 
-        if not person.infection:
+        if not person.state == "Infected" :
             continue
-
+        #전체 반복
         for neighbor_id in neighbors:
             neighbor = self.people[neighbor_id]
-
-            if neighbor.infection:
+            #감염된 경우 제거
+            if neighbor.state == "Infected" :
                 continue
-
+            # 감염율 값 받아오기.(상수 변화 최소화)
             probability = self.infection_probability
 
             # 백신 접종자는 감염 확률 감소
             if neighbor.vaccine:
-                probability *= (1 - self.vaccine_effectiveness)
+              probability *= (1 - self.vaccine_effectiveness)
+            # 회복자는 감염 확률 감소
+            if neighbor.state == "Recovered" :
+              probability *= (1 - self.recovered_probability)
 
             if random.random() < probability:
                 newly_infected.add(neighbor_id)
 
     # 모든 감염 판정이 끝난 뒤 상태 변경
     for person_id in newly_infected:
-        self.people[person_id].infection = True
+        self.people[person_id].state = "Infected"
+        self.people[person_id].infected_at = self.people[person_id].cur_location
+        self.people[person_id].infected_date = self.day
 
     # 감염자 비율이 50% 이상이면 거리두기 발령
     infected_count = sum(
-        person.infection
+        person.state == "Infected"
         for person in self.people.values()
     )
 
@@ -166,12 +201,14 @@ class Simulation:
 
     return True
 
+
   def simulate_hour(self) -> bool :
     for person in self.people.values() :
       person.move(self.hour)
 
     self.contact_check()
     self.infection_phase()
+    self.recovered_check()
     self.hour += 1
     self.total_hours += 1
 
@@ -180,9 +217,18 @@ class Simulation:
 
     return True
 
+
   def simulate_day(self) -> bool :
     for _ in range(24) :
       self.simulate_hour()
+
+    data = {
+      "day" : [self.day],
+      "infected" : [self.infected_count()]
+    }
+    temp = pd.DataFrame(data)
+
+    self.result = pd.concat([self.result, temp], ignore_index = True)
 
     self.day += 1
 
@@ -193,6 +239,7 @@ class Simulation:
 
     return True
 
+
   def run(self, days: int) -> bool :
     if days < 0 :
       raise ValueError("days must be non-negative")
@@ -200,4 +247,5 @@ class Simulation:
     for _ in range(days) :
       self.simulate_day()
 
+    self.result.set_index("day", inplace = True)
     return True

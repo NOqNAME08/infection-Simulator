@@ -41,54 +41,15 @@
 from Simulation import Simulation
 
 
-def main():
+def main(num = 100, day = 5):
     simulation = Simulation()
-    simulation.setup(100)
+    simulation.setup(num)
+    simulation.run(day)
 
-    print("시간별 감염자 수")
+    print(simulation.result)
 
-    for hour in range(24) :
-        infected_count = sum(
-            person.state == "I"
-            for person in simulation.people.values()
-        )
-
-        print(f"{hour:02d}시: {infected_count}명")
-
-        simulation.simulate_hour()
-
-    edge_counts = [
-        len(neighbors)
-        for neighbors in simulation.graph.values()
-    ]
-
-    average_contacts = (
-        sum(edge_counts) / len(edge_counts)
-        if edge_counts
-        else 0
-    )
-
-    print("평균 접촉자 수:", round(average_contacts, 2))
-    print("최대 접촉자 수:", max(edge_counts, default = 0))
-    print("전체 감염자 수:", sum(
-        person.state == "I"
-        for person in simulation.people.values()
-    ))
-
-    print("종료:", simulation.day, simulation.total_hours)
-
-    infected = sum(
-        person.state == 'I'
-        for person in simulation.people.values()
-    )
-
-    print("감염자 수:", infected)
-
-    print(
-        "접촉 그래프의 노드 수:",
-        len(simulation.graph)
-    )
+    return True
 
 
 if __name__ == "__main__":
-    main()
+    main(num = 10_000, day = 7)
