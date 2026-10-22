@@ -39,17 +39,19 @@
 # 분석: 노드 사이의 간선 수를 30% 줄였을 때, 바이러스가 전체 노드로 확산되는 데 걸리는 일수(Day)가 증가하여 확산 곡선이 평탄화됨(Flattening the curve).
 #금요일 5시 과외로 변경.
 from Simulation import Simulation
+import matplotlib.pyplot as plt
 
-
-def main(num = 100, day = 5):
+def main(num = 100, day = 5, seed:int = 0):
     simulation = Simulation()
-    simulation.setup(num)
+    simulation.setup(num, random_seed=seed)
     simulation.run(day)
 
-    print(simulation.result)
-
+    plt.plot(simulation.result)
+    plt.ylabel("infected people")
+    plt.xlabel("day")
+    plt.show()
     return True
 
 
 if __name__ == "__main__":
-    main(num = 10_000, day = 7)
+    main(num = 1_000, day = 100, seed = 42)
