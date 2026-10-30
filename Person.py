@@ -4,12 +4,12 @@ from Location import Location
 class Person:
 
   def __init__(self,
-      ID: int,
+      id: int,
       schedule: dict[int, Location],
       occupation: str,
   ) -> None:
     # ID는 시뮬레이션 안에서 사람을 구분하는 고유 번호다.
-    self.ID = ID
+    self.id = id
     # schedule은 시각(0~23)에서 해당 시각의 Location으로 연결된다.
     self.schedule = schedule
     # occupation은 낮 시간의 기본 소속 장소(school 또는 company)를 정한다.
@@ -19,12 +19,19 @@ class Person:
     # 감염이 발생한 장소와 시각. 전파 경과 시간은 infected_at_hour로 계산한다.
     self.infected_at: Location | None = None
     self.infected_at_hour: int | None = None
-    # 개인별 회복 시각. 평균 회복 기간 주변의 차이를 반영한다.
-    self.recovery_at_hour: int | None = None
+    # 감염 후 증상 발현과 회복/사망 예정 시각을 기록한다.
+    self.symptom_onset_at_hour: int | None = None
+    self.outcome_at_hour: int | None = None
+    self.outcome_duration_days: int | None = None
+    self.next_death_check_at_hour: int | None = None
+    self.daily_death_probability: float | None = None
+    # 회복 직후부터 면역 효과가 감소하는 기준 시각과 감염 에피소드 수.
+    self.recovered_at_hour: int | None = None
+    self.infection_count: int = 0
     # 격리 여부는 감염 상태와 별도 관리해 Safe/Recovered 상태를 늘리지 않는다.
     self.is_isolated: bool = False
     self.state : str = "Safe"
-    # state의 허용 값: Safe, Infected, Recovered.
+    # state의 허용 값: Safe, Exposed, Infected(증상 발현), Recovered, Dead.
 
 
   def move(self, time) -> str:
@@ -52,12 +59,12 @@ class Person:
 
     if destination is not self.cur_location:
       # 기존 장소에서 사람 ID를 제거한 다음 새 장소로 이동한다.
-      if self.ID in self.cur_location.people:
-        self.cur_location.people.remove(self.ID)
+      if self.id in self.cur_location.people:
+        self.cur_location.people.remove(self.id)
       self.cur_location = destination
 
     # 현재 위치의 인원 목록에 본인이 정확히 포함되도록 보정한다.
-    if self.ID not in self.cur_location.people:
-      self.cur_location.people.append(self.ID)
+    if self.id not in self.cur_location.people:
+      self.cur_location.people.append(self.id)
 
-    return f"{self.ID} this person is moved to {self.cur_location.name}"
+    return f"{self.id} this person is moved to {self.cur_location.name}"
